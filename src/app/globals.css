@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #f8f7f4;
+  --text: #201e1b;
+  --text-muted: #5c554a;
+  --text-subtle: #8c816e;
+  --border: #ddd8cc;
+  --teal: #27766a;
+  --teal-light: #d9f0e9;
+  --teal-dark: #1e4c46;
+  --amber: #d97706;
+  --card: #ffffff;
+  --card-shadow: 0 2px 16px 0 rgba(32,30,27,0.07);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-serif {
+  font-family: 'Libre Baskerville', Georgia, serif;
+}
+
+/* Subtle grain texture on background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+main {
+  position: relative;
+  z-index: 1;
+}
+
+@layer components {
+  .card {
+    background: var(--card);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border);
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg font-medium text-white transition-all duration-200;
+    background-color: var(--teal);
+    font-size: 0.95rem;
+    letter-spacing: 0.01em;
+  }
+  .btn-primary:hover {
+    background-color: var(--teal-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(39, 118, 106, 0.25);
+  }
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center px-6 py-3 rounded-lg font-medium transition-all duration-200;
+    background-color: transparent;
+    border: 1.5px solid var(--border);
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+  .btn-secondary:hover {
+    border-color: var(--teal);
+    color: var(--teal);
+    background-color: var(--teal-light);
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm;
+    color: var(--text-muted);
+  }
+  .btn-ghost:hover {
+    background-color: var(--teal-light);
+    color: var(--teal-dark);
+  }
+}
+
+/* Progress bar animation */
+.progress-bar-inner {
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Question card fade in */
+.question-enter {
+  animation: slideUp 0.4s ease-out forwards;
+}
+
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Radio / checkbox styles */
+.option-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.5;
+}
+.option-label:hover {
+  border-color: var(--teal);
+  background-color: var(--teal-light);
+}
+.option-label.selected {
+  border-color: var(--teal);
+  background-color: var(--teal-light);
+}
+
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--teal);
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 2px;
+  cursor: pointer;
+}
+
+textarea {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--text);
+  background: white;
+  resize: vertical;
+  transition: border-color 0.15s ease;
+}
+textarea:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(39, 118, 106, 0.12);
+}
+textarea::placeholder {
+  color: var(--text-subtle);
+}
+
+/* Rating scale */
+.rating-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: white;
+  color: var(--text-muted);
+}
+.rating-btn:hover {
+  border-color: var(--teal);
+  color: var(--teal);
+  background: var(--teal-light);
+}
+.rating-btn.selected {
+  border-color: var(--teal);
+  background: var(--teal);
+  color: white;
+}
+
+/* Report section */
+.report-section {
+  border-left: 3px solid var(--teal);
+  padding-left: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* Domain bar */
+.domain-bar-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--border);
+  overflow: hidden;
+}
+.domain-bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  background: var(--teal);
+  transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
