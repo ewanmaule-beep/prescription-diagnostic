@@ -5,17 +5,17 @@
 @tailwind utilities;
 
 :root {
-  --bg: #f8f7f4;
-  --text: #201e1b;
-  --text-muted: #5c554a;
-  --text-subtle: #8c816e;
-  --border: #ddd8cc;
-  --teal: #27766a;
-  --teal-light: #d9f0e9;
-  --teal-dark: #1e4c46;
-  --amber: #d97706;
-  --card: #ffffff;
-  --card-shadow: 0 2px 16px 0 rgba(32,30,27,0.07);
+  --bg: #F2F0EB;
+  --text: #1C1C1A;
+  --text-muted: #4a4540;
+  --text-subtle: #7a7268;
+  --border: #dbd7cf;
+  --teal: #2D6E63;
+  --teal-light: #d4eae6;
+  --teal-dark: #1e4c44;
+  --amber: #c07a2a;
+  --card: #faf9f6;
+  --card-shadow: 0 2px 20px 0 rgba(28,28,26,0.06);
 }
 
 * {

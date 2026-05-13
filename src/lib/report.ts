@@ -1,214 +1,211 @@
-import { Answers, Domain, DomainScore, ReportData } from "@/types";
+import { Answers, Domain, LanguageBank, ReportData } from "@/types";
 import { calculateDomainScores, getTopDomains, getLowDomains } from "./scoring";
+import { domainLabels } from "@/data/questions";
 
-// Pattern text by domain combination
+// Pattern text by domain — what the user's strong pattern suggests about how they work
 const PATTERNS: Record<Domain, string[]> = {
-  complexity: [
-    "Your answers suggest you are drawn to work that requires making sense of difficult, layered information. You may have developed a strong instinct for identifying what actually matters in complex situations.",
-    "You appear to have built a capacity for translating specialist knowledge into accessible language — often without realising how rare that combination is.",
+  judgement: [
+    "Your answers suggest you regularly make professional decisions in territory the guidance does not cover. You may have built a confidence in your own judgement that is hard to see in a job description.",
+    "You appear to be comfortable taking responsibility when the answer is not pre-written. That ability to act well under uncertainty is rarer than most pharmacy roles credit.",
   ],
-  ambiguity: [
-    "Your answers suggest you are comfortable operating without a fixed map. You may have developed a tolerance for uncertainty that many organisations actively need but rarely reward.",
-    "You appear to work well in environments where the destination is still being worked out. This is not a common skill — it is often mistaken for indecision, but it is actually a form of strategic patience.",
+  translation: [
+    "Your answers suggest you spend much of your work turning specialist information into something other people can use. That capability is often invisible in pharmacy job descriptions.",
+    "You appear to adapt your communication across very different audiences. That is harder than it sounds, and it travels well into roles beyond clinical practice.",
   ],
   influence: [
-    "Your answers suggest that much of your real work happens through relationships rather than formal authority. You may have built influence that is harder to put on a CV than a job title.",
-    "You appear to operate effectively across organisational boundaries. The ability to bring people with you without relying on hierarchy is highly transferable.",
+    "Your answers suggest much of your real work happens through relationships rather than authority. You may have built influence that is harder to put on a CV than a job title.",
+    "You appear to operate effectively across professional and organisational boundaries. Bringing people with you without hierarchy is a leadership skill, even when it is not framed that way.",
   ],
   delivery: [
-    "Your answers suggest you get energy from seeing things through. You may be particularly effective in roles where implementation and accountability matter more than endless deliberation.",
-    "You appear to be oriented toward outcomes and momentum. This can be a significant asset in organisations that struggle to convert good thinking into action.",
+    "Your answers suggest you get energy from finishing things. In organisations that struggle to convert good thinking into action, that is an asset, not a default.",
+    "You appear to be the person who takes plans and turns them into something that actually works. That is a different skill from designing the plan in the first place.",
   ],
-  values: [
-    "Your answers suggest that values alignment is not optional for you — it is a working condition. This may limit some options, but it also tends to produce deeper commitment in the roles that do fit.",
-    "You appear to have a well-developed sense of what is right in complex situations. Moral clarity in ambiguous environments is a leadership capability, even when it does not feel like one.",
+  systems: [
+    "Your answers suggest you tend to spot the wider pattern behind individual cases. Most colleagues respond to what is in front of them. You may be designing for what comes next.",
+    "You appear to think in systems rather than tasks. That is the foundation of quality improvement, service redesign, and governance work, even if you do not call it that.",
   ],
-  energy: [
-    "Your answers suggest you have a clear sense of what environments bring out your best. This self-awareness is valuable — many people only discover this after making the wrong move.",
-    "You appear to have some clarity about what drains you. Understanding the conditions you need to thrive is often more useful than a list of qualifications.",
+  development: [
+    "Your answers suggest people regularly learn from you, often without you noticing. Quiet development of others is one of the most under-recognised forms of leadership in NHS pharmacy.",
+    "You appear to take responsibility for how others around you grow. That builds organisational capability over time and translates well into education, leadership, and operational roles.",
+  ],
+  data: [
+    "Your answers suggest you can interpret evidence and data and turn it into something useful. Many pharmacy professionals undersell this. It is more transferable than 'pharmacy knowledge' alone.",
+    "You appear to be the person others ask when the numbers need a careful read. That capability translates directly into commissioning, market access, research, and policy work.",
+  ],
+  operations: [
+    "Your answers suggest your role is largely about keeping services running reliably. That work is often invisible until it stops, and people who can do it consistently are harder to find than the system credits.",
+    "You appear to think operationally as well as clinically. The combination of clinical credibility and operational competence is rare and highly valued outside the immediate NHS context.",
   ],
 };
 
+// Capabilities now expanded with context — what each capability looks like and why it matters
 const CAPABILITIES: Record<Domain, string[]> = {
-  complexity: [
-    "Making complex systems legible to non-expert stakeholders",
-    "Synthesising information across professional and organisational boundaries",
-    "Identifying the real problem underneath the stated problem",
+  judgement: [
+    "Making well-judged decisions when guidance is incomplete, contested, or absent. Outside NHS pharmacy this is described as 'professional judgement under uncertainty' — a quality regulators, commissioners, and clinical leadership functions actively look for.",
+    "Weighing competing risks and being able to explain the reasoning afterwards. The 'showing your working' part is what separates this from intuition, and it is what makes you credible to people who were not in the room.",
+    "Knowing when to act and when to hold for more information. In pharmacy this looks like everyday clinical practice. In other contexts it is strategic patience — a recognised leadership capability.",
   ],
-  ambiguity: [
-    "Operating effectively in early-stage, undefined, or changing environments",
-    "Creating structure and direction when none exists",
-    "Sustaining progress without needing permission at every step",
+  translation: [
+    "Turning specialist information into language different audiences can actually use. This is one of the most valuable transferable capabilities in pharmacy, and one of the most consistently underclaimed.",
+    "Reading what an audience needs and adjusting depth, language, and emphasis accordingly. In policy, commissioning, or commercial settings this is described as 'stakeholder communication' — a senior-level skill.",
+    "Briefing senior decision-makers so they can act with confidence. The work is often invisible. People only notice if they are missing something or got something wrong.",
   ],
   influence: [
-    "Building trust and working relationships across diverse groups",
-    "Influencing decisions and behaviour without formal authority",
-    "Navigating competing agendas to find workable paths forward",
+    "Getting cross-professional or cross-organisational work moving when no one is in charge of everything. Outside pharmacy this is described as 'cross-functional leadership' or 'system leadership'.",
+    "Building trust with people whose priorities, language, or incentives differ from yours. Most professionals do not develop this until much later in their careers.",
+    "Holding difficult conversations with senior people in a way that keeps the relationship intact. In commercial or political contexts this is called 'speaking truth to power' — rare enough to be highly valued.",
   ],
   delivery: [
-    "Moving work from thinking to doing",
-    "Maintaining momentum and focus in environments that pull you toward delay",
-    "Holding accountability without micromanagement",
+    "Turning a strategy, plan, or idea into something that runs in the real world. Many organisations are good at thinking and poor at delivery. This is the gap you close.",
+    "Holding momentum on work that crosses teams or organisations. Without this, complex change initiatives stall — which is why programme leadership roles exist as their own discipline.",
+    "Knowing what 'finished' looks like and holding people to it without breaking the relationship. That is craft, not management theory.",
   ],
-  values: [
-    "Holding ethical lines under organisational pressure",
-    "Communicating difficult truths to senior decision-makers",
-    "Building cultures where quality and integrity are taken seriously",
+  systems: [
+    "Spotting patterns across cases or incidents that point to a wider system issue. In quality improvement, governance, and patient safety, this is the foundation skill.",
+    "Designing controls, processes, or pathways that prevent problems rather than catch them late. Most NHS work fixes individual issues. Systems thinking changes the conditions.",
+    "Translating individual cases into improvements that change practice for everyone. Outside the NHS this looks like organisational design or operational excellence.",
   ],
-  energy: [
-    "Identifying the conditions under which you do your best work",
-    "Sustaining contribution over time rather than burning out",
-    "Recognising when an environment is not working before it becomes a crisis",
+  development: [
+    "Developing the capability of trainees, juniors, and peers through teaching, supervision, and modelling. This is leadership work even when it does not have 'leader' in the title.",
+    "Supporting colleagues through difficult professional situations without losing your own footing. Hard to teach. Easy to undervalue.",
+    "Designing learning that actually changes practice, not just learning that fills a session. Most training fills time. Yours seems to land.",
+  ],
+  data: [
+    "Interpreting clinical evidence, prescribing data, or service activity data with rigour. In commissioning, market access, and policy roles this is core — and pharmacy professionals often have more of this than they credit themselves for.",
+    "Spotting trends, outliers, or what the data is not saying. Many roles produce data. Fewer can read it.",
+    "Turning data into a decision or recommendation people can act on. The bridge from analysis to action — usually missing from teams that 'have lots of data but no insight'.",
+  ],
+  operations: [
+    "Keeping a clinical or operational service running reliably under shifting demand. Almost everyone takes this for granted until it fails.",
+    "Managing rotas, capacity, resources, and budgets so the team can actually do the work. In other sectors this is described as 'operational leadership' — a well-paid function.",
+    "Setting standards and holding the line on quality when operational pressure is high. This is the work that prevents drift, and it is surprisingly rare to find consistently.",
   ],
 };
 
-const ENERGISING_ENVIRONMENTS: Record<Domain, string[]> = {
-  complexity: [
-    "Strategy and advisory roles where analysis is central",
-    "Environments where you are expected to think, not just execute",
-    "Organisations dealing with genuinely difficult, multi-layered challenges",
-  ],
-  ambiguity: [
-    "Start-up and scale-up phases of new organisations or programmes",
-    "Consultancy or advisory work with high variety",
-    "Roles where the brief evolves and you help shape it",
-  ],
-  influence: [
-    "Cross-functional or cross-sector partnership roles",
-    "Stakeholder engagement, policy, or public affairs environments",
-    "Leadership development or facilitation roles where relationships are the work",
-  ],
-  delivery: [
-    "Programme and project leadership with clear outcomes",
-    "Implementation-focused organisations that measure what they build",
-    "Environments where getting things done is valued as much as thinking them",
-  ],
-  values: [
-    "Mission-driven organisations where purpose is explicit",
-    "Regulatory or assurance roles where standards matter",
-    "Social impact, charity, or public interest environments",
-  ],
-  energy: [
-    "Organisations that invest in how people work, not just what they produce",
-    "Roles with some autonomy over how and when you contribute",
-    "Teams where intellectual curiosity is welcomed",
-  ],
-};
-
-const DRAINING_ENVIRONMENTS: Record<Domain, string[]> = {
-  complexity: [
-    "Roles requiring simple, repetitive execution without analytical challenge",
-    "Organisations that penalise nuanced thinking in favour of quick answers",
-  ],
-  ambiguity: [
-    "Highly procedural environments with little room for independent judgement",
-    "Roles where everything requires sign-off before you can act",
-  ],
-  influence: [
-    "Organisations that run entirely on hierarchy and formal authority",
-    "Roles where relationships are transactional and trust is not valued",
-  ],
-  delivery: [
-    "Environments where ideas circulate but nothing gets built",
-    "Organisations that reward strategy but dismiss the people who implement it",
-  ],
-  values: [
-    "Organisations where ethical concerns are treated as obstacles",
-    "Roles that require you to present something as better than you know it to be",
-  ],
-  energy: [
-    "Environments where wellbeing is spoken about but not acted on",
-    "Roles with no intellectual variety or growth pathway",
-  ],
-};
-
-const SECTORS_BY_DOMAIN: Record<Domain, string[]> = {
-  complexity: [
-    "Health technology and digital health",
-    "Research and evaluation",
-    "Strategy and transformation consultancy",
-    "Regulation and assurance",
-  ],
-  ambiguity: [
-    "Innovation networks and emerging health ventures",
-    "Consultancy (generalist or sector-specialist)",
-    "Portfolio or fractional advisory work",
-    "Digital transformation",
-  ],
-  influence: [
-    "Leadership development and facilitation",
-    "Public affairs and policy",
-    "Organisational development",
-    "Professional bodies and membership organisations",
-  ],
-  delivery: [
-    "Programme leadership",
-    "Market access and commercial partnerships",
-    "Charities and social impact organisations",
-    "NHS transformation and improvement",
-  ],
-  values: [
-    "Charities and social impact",
-    "Regulation and assurance",
-    "Training and facilitation",
-    "Public affairs and policy",
-  ],
-  energy: [
-    "Portfolio or fractional advisory work",
-    "Training and facilitation",
-    "Leadership development",
-    "Innovation and social enterprise",
-  ],
-};
-
-const LANGUAGE_TIPS: Record<Domain, string> = {
-  complexity:
-    "Outside the NHS, 'medicines optimisation' or 'commissioning' may mean nothing. Instead, try: 'I help organisations make sense of complex clinical and financial information and turn it into decisions people can act on.'",
-  ambiguity:
-    "Your experience working in undefined, politically complex environments is more unusual than you think. Try: 'I have spent years leading in environments where the rules were unclear, the stakeholders had competing interests, and getting things done required more than formal authority.'",
-  influence:
-    "Describing your influence is often harder than describing your expertise. Try: 'Much of what I do happens through relationships — building trust with people across different organisations and professions so that, when it matters, they are willing to move with me.'",
-  delivery:
-    "NHS delivery often gets lost in translation. Try: 'I have led programmes that turned good policy into working services — navigating the gap between what looks good on paper and what actually happens in practice.'",
-  values:
-    "Your values orientation may sound like idealism to some employers — frame it as a performance characteristic. Try: 'I work best in organisations where the stated mission and the daily decisions are genuinely aligned. I have stayed in difficult environments when that was true, and left when it was not.'",
-  energy:
-    "Knowing what you need is a sign of maturity, not fussiness. Try: 'I have learned what conditions help me do my best work — and I look for environments that can offer some version of that, rather than burning through goodwill in the wrong place.'",
+// Translation bank — four context-specific phrasings per domain
+const LANGUAGE_BANKS: Record<Domain, LanguageBank> = {
+  judgement: {
+    skillName: "Judgement when there is no obvious answer",
+    phrasings: [
+      { context: "CV bullet", text: "Routinely make professional decisions in territory the guidance does not directly cover, with clear reasoning that stands up to scrutiny." },
+      { context: "LinkedIn one-liner", text: "I work in clinical and organisational territory where the rulebook only takes you so far." },
+      { context: "In conversation", text: "Quite a lot of my work involves making the judgement call when the answer is not pre-written." },
+      { context: "Interview fragment", text: "A recent example would be a situation where there was no clear guidance. What I weighed was..." },
+    ],
+  },
+  translation: {
+    skillName: "Explaining complex things clearly",
+    phrasings: [
+      { context: "CV bullet", text: "Translate complex clinical and medicines information into language that clinicians, commissioners, and senior leaders can act on." },
+      { context: "LinkedIn one-liner", text: "I turn specialist information into something other people can actually use." },
+      { context: "In conversation", text: "A lot of what I do is helping non-pharmacy people understand what matters and what to do next." },
+      { context: "Interview fragment", text: "When I am explaining something specialist to a board or to a non-clinical manager, what I tend to do is..." },
+    ],
+  },
+  influence: {
+    skillName: "Influencing people you do not manage",
+    phrasings: [
+      { context: "CV bullet", text: "Lead cross-organisational and cross-professional work that depends on building agreement with people I do not manage." },
+      { context: "LinkedIn one-liner", text: "Most of what I get done depends on people choosing to come with me, not on authority." },
+      { context: "In conversation", text: "I work across a lot of organisational and professional boundaries, so building trust is half the job." },
+      { context: "Interview fragment", text: "There was a piece of work that needed the GPs, the commissioners, and the hospital teams to agree. What I did was..." },
+    ],
+  },
+  delivery: {
+    skillName: "Making things happen",
+    phrasings: [
+      { context: "CV bullet", text: "Take strategies, plans, and proposals through to delivered services and changed practice on the ground." },
+      { context: "LinkedIn one-liner", text: "I am typically the person who turns plans into working reality." },
+      { context: "In conversation", text: "My role is essentially making sure the thing actually happens, not just that it has been agreed." },
+      { context: "Interview fragment", text: "When I was leading [project], the gap was between agreement and delivery. What I did was..." },
+    ],
+  },
+  systems: {
+    skillName: "Seeing the system, not just the task",
+    phrasings: [
+      { context: "CV bullet", text: "Spot patterns in clinical and operational data that point to wider system issues, and design responses that prevent recurrence." },
+      { context: "LinkedIn one-liner", text: "I tend to see the system behind individual incidents and design accordingly." },
+      { context: "In conversation", text: "Where most people see a problem, I am often thinking about what the conditions were that allowed it to happen." },
+      { context: "Interview fragment", text: "We had a series of incidents that looked unrelated until I mapped them. What that pointed to was..." },
+    ],
+  },
+  development: {
+    skillName: "Helping other people develop",
+    phrasings: [
+      { context: "CV bullet", text: "Develop the capability of trainees, peers, and clinical staff through teaching, supervision, mentoring, and modelling." },
+      { context: "LinkedIn one-liner", text: "People in my orbit tend to get better at their jobs because of how I work with them." },
+      { context: "In conversation", text: "I have been involved in how a number of colleagues have grown. That is not in my job title, but it is most of what I am asked to do informally." },
+      { context: "Interview fragment", text: "One of the people I supervised went from [start point] to [outcome]. What I did was..." },
+    ],
+  },
+  data: {
+    skillName: "Making sense of evidence and data",
+    phrasings: [
+      { context: "CV bullet", text: "Interpret clinical, prescribing, and service activity data; turn findings into actionable recommendations for clinical and operational decision-makers." },
+      { context: "LinkedIn one-liner", text: "I make sense of evidence and data and turn it into decisions." },
+      { context: "In conversation", text: "I am comfortable with data, but more importantly I am the person who translates it into what to actually do." },
+      { context: "Interview fragment", text: "There was a piece of prescribing data that looked routine until I checked the variation. What I found was..." },
+    ],
+  },
+  operations: {
+    skillName: "Running services well",
+    phrasings: [
+      { context: "CV bullet", text: "Operationally accountable for a clinical service: balancing clinical quality, financial performance, and team capacity day to day." },
+      { context: "LinkedIn one-liner", text: "I run a service. Day to day. Reliably, including when it is under pressure." },
+      { context: "In conversation", text: "My role is essentially keeping a complex thing running well, which means balancing clinical, financial, and people work continuously." },
+      { context: "Interview fragment", text: "When the service hit [pressure point], what I did was reprioritise based on..." },
+    ],
+  },
 };
 
 const COACHING_QUESTIONS: Record<Domain, string[]> = {
-  complexity: [
-    "What is the most complex problem you have worked on in the last two years? What made it complex, and what did you do that others could not?",
-    "If someone outside the NHS asked you to explain what you are genuinely good at — in thirty seconds — what would you say?",
+  judgement: [
+    "What was the last decision you made where the right answer was not already documented? What did you weigh?",
+    "Where in your work is your professional judgement most relied on, and where is it most invisible?",
   ],
-  ambiguity: [
-    "Think of a time when you created direction for others in an unclear situation. What did you do, and what would have happened without you?",
-    "How much of your current dissatisfaction is about the work itself, and how much is about the environment you are doing it in?",
+  translation: [
+    "Who relies on you to translate something complex into something usable? What do they get from you that they could not get elsewhere?",
+    "When you have had to explain something specialist to a senior or non-clinical audience, what made it land?",
   ],
   influence: [
-    "Who relies on you the most at work — and why? What would they say you provide that is hard to find elsewhere?",
-    "Think of a decision that went the way you wanted it to. What did you do to make that happen? Was formal authority involved?",
+    "Think of a decision that went the way you wanted in the last year. What did you do to make that happen? Was formal authority involved?",
+    "Who in your network depends on you to get something done that they could not get done themselves? Why?",
   ],
   delivery: [
-    "What is the last thing you completed — genuinely finished — that you are proud of? What did it take?",
-    "What is currently sitting half-done that matters to you? What is getting in the way?",
+    "What is the last thing you delivered end-to-end that you are proud of? What did it take?",
+    "What is currently sitting half-done in your work that you wish was finished? What is in the way?",
   ],
-  values: [
-    "Where is the gap between the work you say you want to do and the work you are actually doing? What is keeping that gap open?",
-    "What would have to be true about a future role for you to feel that your values and your work are genuinely aligned?",
+  systems: [
+    "Think of a problem you saw repeating across different cases. What did you do with that pattern?",
+    "Where in your work are you the person who sees the system, and where are you stuck dealing with individual symptoms?",
   ],
-  energy: [
-    "When did you last feel truly energised by your work? What was different about that time?",
-    "If you imagine yourself in five years feeling genuinely satisfied professionally, what does a typical Tuesday look like?",
+  development: [
+    "Who has grown professionally because of something you did? What did you do?",
+    "Where in your current role is the development of others valued, and where is it taken for granted?",
+  ],
+  data: [
+    "What is the last piece of data or evidence you turned into a real decision or change? What did you do?",
+    "Where in your work is your ability to interpret evidence most useful, and where is it under-used?",
+  ],
+  operations: [
+    "What does your service look like on a quiet day, and what does it look like when it is under pressure? What do you do differently?",
+    "Where in your operational work are you most relied on, and where is your contribution invisible until it breaks?",
   ],
 };
+
+// Static "what to do with this report" actions
+const NEXT_STEPS: string[] = [
+  "Pick three lines on your CV or LinkedIn profile and rewrite them using the phrasings above. See if they sound more like you.",
+  "Choose one coaching question and bring it into a conversation — a 1-to-1, a peer chat, or a coaching session. Notice what comes up.",
+  "Try one of the phrases in a real conversation this week. Pay attention to how it lands, and how it feels saying it.",
+];
 
 export function generateReport(answers: Answers): ReportData {
   const domainScores = calculateDomainScores(answers);
   const topDomains = getTopDomains(domainScores, 3);
   const lowDomains = getLowDomains(domainScores, 2);
 
-  // Patterns — from top 2 domains
+  // Patterns — top 2 domains, one pattern each
   const patterns = topDomains.slice(0, 2).flatMap((d) => PATTERNS[d].slice(0, 1));
 
   // Capabilities — top 3 domains, 2 each
@@ -216,25 +213,8 @@ export function generateReport(answers: Answers): ReportData {
     .slice(0, 3)
     .flatMap((d) => CAPABILITIES[d].slice(0, 2));
 
-  // Energising environments — top 2 domains
-  const energisingEnvironments = topDomains
-    .slice(0, 2)
-    .flatMap((d) => ENERGISING_ENVIRONMENTS[d].slice(0, 2));
-
-  // Draining environments — low domains + drain answers
-  const drainingEnvironments = lowDomains
-    .slice(0, 2)
-    .flatMap((d) => DRAINING_ENVIRONMENTS[d].slice(0, 1));
-
-  // Sectors — top 3 domains, deduplicated
-  const sectorSet = new Set<string>();
-  topDomains.slice(0, 3).forEach((d) => {
-    SECTORS_BY_DOMAIN[d].forEach((s) => sectorSet.add(s));
-  });
-  const sectors = Array.from(sectorSet).slice(0, 8);
-
-  // Language tips — top 2 domains
-  const languageTips = topDomains.slice(0, 2).map((d) => LANGUAGE_TIPS[d]);
+  // Language banks — top 3 domains
+  const languageBanks = topDomains.slice(0, 3).map((d) => LANGUAGE_BANKS[d]);
 
   // Coaching questions — top 2 domains
   const coachingQuestions = topDomains
@@ -242,9 +222,9 @@ export function generateReport(answers: Answers): ReportData {
     .flatMap((d) => COACHING_QUESTIONS[d]);
 
   // Summary sentence
-  const topLabel = domainScores.find((s) => s.domain === topDomains[0])?.label;
-  const secondLabel = domainScores.find((s) => s.domain === topDomains[1])?.label;
-  const summary = `Your answers suggest your strongest patterns are in ${topLabel} and ${secondLabel}. These are not personality types — they are tendencies observed across your responses. Use this as a starting point for reflection or coaching, not a fixed conclusion.`;
+  const topLabel = domainLabels[topDomains[0]];
+  const secondLabel = domainLabels[topDomains[1]];
+  const summary = `Your answers suggest your strongest skill patterns are in ${topLabel} and ${secondLabel}. These are not personality types — they are tendencies observed across your responses. Use this as a starting point for articulating what you do, not a fixed conclusion.`;
 
   return {
     domainScores,
@@ -253,49 +233,64 @@ export function generateReport(answers: Answers): ReportData {
     answers,
     patterns,
     capabilities,
-    energisingEnvironments,
-    drainingEnvironments,
-    sectors,
-    languageTips,
+    languageBanks,
     coachingQuestions,
+    nextSteps: NEXT_STEPS,
     summary,
   };
 }
 
-export function formatReportAsText(report: ReportData): string {
+type EnhancedData = {
+  summary?: string;
+  patterns?: string[];
+  capabilities?: string[];
+  languageBanks?: LanguageBank[];
+  coachingQuestions?: string[];
+};
+
+export function formatReportAsText(report: ReportData, enhanced?: EnhancedData): string {
+  const patterns = enhanced?.patterns ?? report.patterns;
+  const capabilities = enhanced?.capabilities ?? report.capabilities;
+  const languageBanks = enhanced?.languageBanks ?? report.languageBanks;
+  const coachingQuestions = enhanced?.coachingQuestions ?? report.coachingQuestions;
+  const summary = enhanced?.summary ?? report.summary;
+
+  const languageLines: string[] = [];
+  languageBanks.forEach((bank) => {
+    languageLines.push("");
+    languageLines.push(bank.skillName);
+    languageLines.push("-".repeat(Math.max(10, bank.skillName.length)));
+    bank.phrasings.forEach((p) => {
+      languageLines.push(`${p.context}:`);
+      languageLines.push(`  ${p.text}`);
+    });
+  });
+
   const lines: string[] = [
-    "THE PRESCRIPTION — CAREER TRANSLATION DIAGNOSTIC",
+    "THE PRESCRIPTION — SKILLS TRANSLATION REPORT",
     "=".repeat(50),
     "",
     "WHAT YOUR ANSWERS SUGGEST",
     "-".repeat(30),
-    ...report.patterns,
+    ...patterns,
     "",
-    report.summary,
+    summary,
     "",
     "TRANSFERABLE CAPABILITIES YOU MAY BE UNDERESTIMATING",
     "-".repeat(30),
-    ...report.capabilities.map((c) => `• ${c}`),
+    ...capabilities.map((c) => `• ${c}`),
     "",
-    "WORK ENVIRONMENTS LIKELY TO ENERGISE YOU",
+    "HOW TO TALK ABOUT THESE SKILLS OUTSIDE THE NHS",
     "-".repeat(30),
-    ...report.energisingEnvironments.map((e) => `• ${e}`),
-    "",
-    "WORK ENVIRONMENTS LIKELY TO DRAIN YOU",
-    "-".repeat(30),
-    ...report.drainingEnvironments.map((e) => `• ${e}`),
-    "",
-    "SECTORS AND ROLE FAMILIES WORTH EXPLORING",
-    "-".repeat(30),
-    ...report.sectors.map((s) => `• ${s}`),
-    "",
-    "HOW TO TALK ABOUT YOUR NHS EXPERIENCE OUTSIDE THE NHS",
-    "-".repeat(30),
-    ...report.languageTips,
+    ...languageLines,
     "",
     "COACHING QUESTIONS TO REFLECT ON NEXT",
     "-".repeat(30),
-    ...report.coachingQuestions.map((q) => `• ${q}`),
+    ...coachingQuestions.map((q) => `• ${q}`),
+    "",
+    "WHAT TO DO WITH THIS REPORT",
+    "-".repeat(30),
+    ...report.nextSteps.map((s, i) => `${i + 1}. ${s}`),
     "",
     "=".repeat(50),
     "DISCLAIMER",

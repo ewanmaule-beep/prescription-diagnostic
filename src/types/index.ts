@@ -1,12 +1,14 @@
 export type QuestionType = "single" | "multi" | "rating" | "text";
 
 export type Domain =
-  | "complexity"
-  | "ambiguity"
+  | "judgement"
+  | "translation"
   | "influence"
   | "delivery"
-  | "values"
-  | "energy";
+  | "systems"
+  | "development"
+  | "data"
+  | "operations";
 
 export interface Option {
   value: string;
@@ -39,6 +41,20 @@ export interface DomainScore {
   label: string;
 }
 
+export interface CareerContext {
+  jobTitle?: string;
+}
+
+export interface TranslationPhrase {
+  context: string; // e.g. "CV bullet", "LinkedIn one-liner", "In conversation", "Interview fragment"
+  text: string;
+}
+
+export interface LanguageBank {
+  skillName: string;
+  phrasings: TranslationPhrase[];
+}
+
 export interface ReportData {
   domainScores: DomainScore[];
   topDomains: Domain[];
@@ -46,10 +62,8 @@ export interface ReportData {
   answers: Answers;
   patterns: string[];
   capabilities: string[];
-  energisingEnvironments: string[];
-  drainingEnvironments: string[];
-  sectors: string[];
-  languageTips: string[];
+  languageBanks: LanguageBank[];
   coachingQuestions: string[];
+  nextSteps: string[];
   summary: string;
 }

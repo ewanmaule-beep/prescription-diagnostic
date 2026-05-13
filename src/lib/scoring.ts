@@ -2,22 +2,26 @@ import { Answers, Domain, DomainScore } from "@/types";
 import { questions, domainLabels } from "@/data/questions";
 
 const DOMAIN_MAX_SCORES: Record<Domain, number> = {
-  complexity: 12,
-  ambiguity: 10,
-  influence: 12,
-  delivery: 10,
-  values: 10,
-  energy: 10,
+  judgement: 8,
+  translation: 9,
+  influence: 8,
+  delivery: 8,
+  systems: 9,
+  development: 8,
+  data: 10,
+  operations: 10,
 };
 
 export function calculateDomainScores(answers: Answers): DomainScore[] {
   const rawScores: Record<Domain, number> = {
-    complexity: 0,
-    ambiguity: 0,
+    judgement: 0,
+    translation: 0,
     influence: 0,
     delivery: 0,
-    values: 0,
-    energy: 0,
+    systems: 0,
+    development: 0,
+    data: 0,
+    operations: 0,
   };
 
   questions.forEach((q) => {

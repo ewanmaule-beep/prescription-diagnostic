@@ -7,36 +7,87 @@ import ReportSection from "@/components/ReportSection";
 import ResultSummary from "@/components/ResultSummary";
 import Button from "@/components/Button";
 import { generateReport, formatReportAsText } from "@/lib/report";
-import { ReportData, Answers } from "@/types";
+import { ReportData, Answers, LanguageBank } from "@/types";
+
+type EnhancedData = {
+  summary: string;
+  patterns: string[];
+  capabilities: string[];
+  languageBanks: LanguageBank[];
+  coachingQuestions: string[];
+};
 
 export default function ReportPage() {
   const router = useRouter();
   const [report, setReport] = useState<ReportData | null>(null);
+  const [enhanced, setEnhanced] = useState<EnhancedData | null>(null);
+  const [cvUsed, setCvUsed] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [freeTexts, setFreeTexts] = useState<string[]>([]);
 
   useEffect(() => {
     const raw = sessionStorage.getItem("diagnostic-answers");
-    if (!raw) {
-      router.push("/");
-      return;
-    }
+    if (!raw) { router.push("/"); return; }
+
     const answers: Answers = JSON.parse(raw);
     const generated = generateReport(answers);
     setReport(generated);
 
-    // Collect non-empty free-text answers
-    const textQIds = ["q6", "q12", "q18", "q19"];
+    // Text questions in the new question set are q3 (judgement) and q8 (influence)
+    const textQIds = ["q3", "q8"];
     const texts = textQIds
       .map((id) => answers[id])
       .filter((v): v is string => typeof v === "string" && v.trim().length > 0);
     setFreeTexts(texts);
+
+    // Attempt AI enhancement
+    const cvUrl = sessionStorage.getItem("cv-url");
+    const cvType = sessionStorage.getItem("cv-type");
+    const cvFilename = sessionStorage.getItem("cv-filename");
+    const careerContextRaw = sessionStorage.getItem("career-context");
+
+    async function enhance() {
+      setAiLoading(true);
+      setAiError(null);
+      try {
+        const fd = new FormData();
+        fd.append("answers", raw!);
+        fd.append("baseReport", JSON.stringify(generated));
+
+        if (cvUrl && cvType && cvFilename) {
+          const resp = await fetch(cvUrl);
+          const blob = await resp.blob();
+          const file = new File([blob], cvFilename, { type: cvType });
+          fd.append("cv", file);
+        }
+
+        if (careerContextRaw) {
+          fd.append("careerContext", careerContextRaw);
+        }
+
+        const res = await fetch("/api/report", { method: "POST", body: fd });
+        if (!res.ok) throw new Error("API returned error");
+        const data = await res.json();
+        setEnhanced(data.enhanced);
+        setCvUsed(data.cvUsed);
+      } catch {
+        setAiError("Could not generate AI-enhanced report — showing your standard report below.");
+      } finally {
+        setAiLoading(false);
+      }
+    }
+
+    enhance();
   }, [router]);
+
+  const display = enhanced || null;
 
   function handleCopy() {
     if (!report) return;
-    const text = formatReportAsText(report);
+    const text = formatReportAsText(report, enhanced ?? undefined);
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
@@ -45,7 +96,7 @@ export default function ReportPage() {
 
   function handleDownload() {
     if (!report) return;
-    const text = formatReportAsText(report);
+    const text = formatReportAsText(report, enhanced ?? undefined);
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -55,15 +106,33 @@ export default function ReportPage() {
     URL.revokeObjectURL(url);
   }
 
-  if (!report) {
+  if (!report || aiLoading) {
+    const cvUrlPresent = typeof window !== "undefined" && !!sessionStorage.getItem("cv-url");
     return (
       <Layout maxWidth="md">
-        <div className="text-center py-20" style={{ color: "var(--text-subtle)" }}>
-          Generating your report…
+        <div className="text-center py-24" style={{ color: "var(--text-muted)" }}>
+          <div className="inline-flex items-center gap-3 mb-5">
+            <span className="animate-pulse text-2xl" style={{ color: "var(--teal)" }}>●</span>
+            <span className="font-serif text-xl" style={{ color: "var(--text)" }}>
+              Generating your personalised report
+            </span>
+          </div>
+          <p className="text-sm max-w-md mx-auto leading-relaxed" style={{ color: "var(--text-subtle)" }}>
+            {cvUrlPresent
+              ? "Reading your CV and shaping the report around your patterns. This usually takes 20–40 seconds."
+              : "Shaping the report around the patterns in your answers. This usually takes 10–20 seconds."}
+          </p>
         </div>
       </Layout>
     );
   }
+
+  const patterns = display?.patterns ?? report.patterns;
+  const capabilities = display?.capabilities ?? report.capabilities;
+  const languageBanks = display?.languageBanks ?? report.languageBanks;
+  const coachingQuestions = display?.coachingQuestions ?? report.coachingQuestions;
+  const summary = display?.summary ?? report.summary;
+  const nextSteps = report.nextSteps;
 
   return (
     <Layout maxWidth="lg">
@@ -79,48 +148,55 @@ export default function ReportPage() {
           className="font-serif text-3xl sm:text-4xl font-normal mb-4 leading-snug"
           style={{ color: "var(--text)" }}
         >
-          Career Translation Report
+          Skills Translation Report
         </h1>
-        <p className="text-base" style={{ color: "var(--text-muted)" }}>
-          {report.summary}
-        </p>
 
-        {/* Disclaimer */}
+        {/* AI status indicator */}
+        {cvUsed && (
+          <div
+            className="flex items-center gap-2 mb-4 px-4 py-2 rounded-lg text-sm"
+            style={{ background: "var(--teal-light)", color: "var(--teal-dark)", border: "1px solid var(--teal)" }}
+          >
+            <span>✓</span>
+            <span>Your CV was used to personalise this report.</span>
+          </div>
+        )}
+
+        {aiError && (
+          <div
+            className="mb-4 px-4 py-3 rounded-lg text-sm"
+            style={{ background: "#fef3c7", color: "#92400e", border: "1px solid #fde68a" }}
+          >
+            {aiError}
+          </div>
+        )}
+
+        <p className="text-base" style={{ color: "var(--text-muted)" }}>{summary}</p>
+
         <div
           className="mt-5 px-5 py-4 rounded-lg border text-sm"
-          style={{
-            borderColor: "var(--border)",
-            background: "var(--teal-light)",
-            color: "var(--teal-dark)",
-          }}
+          style={{ borderColor: "var(--border)", background: "var(--teal-light)", color: "var(--teal-dark)" }}
         >
           This is a reflective tool, not career advice. It does not diagnose, categorise,
           or tell you what to do. Use it as a starting point for your own thinking.
         </div>
       </div>
 
-      {/* Domain score chart */}
+      {/* Skill profile chart */}
       <div className="card p-6 sm:p-8 mb-10">
-        <h2
-          className="font-serif text-xl font-normal mb-6"
-          style={{ color: "var(--text)" }}
-        >
-          Your pattern profile
+        <h2 className="font-serif text-xl font-normal mb-6" style={{ color: "var(--text)" }}>
+          Your skill patterns
         </h2>
         <ResultSummary scores={report.domainScores} />
       </div>
 
-      {/* Section 1: What your answers suggest */}
+      {/* Section 1 — Patterns */}
       <ReportSection title="What your answers suggest">
         <div className="space-y-3">
-          {report.patterns.map((p, i) => (
-            <p key={i} className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>
-              {p}
-            </p>
+          {patterns.map((p, i) => (
+            <p key={i} className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>{p}</p>
           ))}
         </div>
-
-        {/* Free-text answers, if any */}
         {freeTexts.length > 0 && (
           <div className="mt-6 space-y-4">
             <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
@@ -130,10 +206,7 @@ export default function ReportPage() {
               <blockquote
                 key={i}
                 className="pl-4 py-2 text-sm italic leading-relaxed"
-                style={{
-                  borderLeft: "2px solid var(--teal)",
-                  color: "var(--text-muted)",
-                }}
+                style={{ borderLeft: "2px solid var(--teal)", color: "var(--text-muted)" }}
               >
                 {t}
               </blockquote>
@@ -142,144 +215,112 @@ export default function ReportPage() {
         )}
       </ReportSection>
 
-      {/* Section 2: Transferable capabilities */}
+      {/* Section 2 — Capabilities */}
       <ReportSection
         title="Transferable capabilities you may be underestimating"
-        note="These are not based on your job title. They reflect patterns in how you described working."
+        note="These reflect patterns in how you described working — not your job title."
       >
-        <ul className="space-y-2">
-          {report.capabilities.map((c, i) => (
+        <ul className="space-y-4">
+          {capabilities.map((c, i) => (
             <li key={i} className="flex gap-3 items-start">
-              <span
-                className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2"
-                style={{ background: "var(--teal)" }}
-              />
-              <span className="text-base" style={{ color: "var(--text-muted)" }}>
-                {c}
-              </span>
+              <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2.5" style={{ background: "var(--teal)" }} />
+              <span className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>{c}</span>
             </li>
           ))}
         </ul>
       </ReportSection>
 
-      {/* Section 3: Energising environments */}
-      <ReportSection title="Work environments likely to energise you">
-        <ul className="space-y-2">
-          {report.energisingEnvironments.map((e, i) => (
-            <li key={i} className="flex gap-3 items-start">
-              <span
-                className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2"
-                style={{ background: "var(--teal)" }}
-              />
-              <span className="text-base" style={{ color: "var(--text-muted)" }}>
-                {e}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </ReportSection>
-
-      {/* Section 4: Draining environments */}
-      <ReportSection title="Work environments likely to drain you">
-        <ul className="space-y-2">
-          {report.drainingEnvironments.map((e, i) => (
-            <li key={i} className="flex gap-3 items-start">
-              <span
-                className="flex-shrink-0 w-1.5 h-1.5 rounded-full mt-2"
-                style={{ background: "var(--amber)", opacity: 0.7 }}
-              />
-              <span className="text-base" style={{ color: "var(--text-muted)" }}>
-                {e}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </ReportSection>
-
-      {/* Section 5: Sectors */}
+      {/* Section 3 — Translation bank */}
       <ReportSection
-        title="Sectors and role families worth exploring"
-        note="These suggestions are based on the patterns in your answers — not a fixed shortlist."
+        title="How to talk about these skills outside the NHS"
+        note="Phrasings you can adapt for a CV, LinkedIn, conversation, or interview answer."
       >
-        <div className="flex flex-wrap gap-2">
-          {report.sectors.map((s, i) => (
-            <span
-              key={i}
-              className="inline-block text-sm px-3 py-1.5 rounded-lg"
-              style={{
-                background: "var(--teal-light)",
-                color: "var(--teal-dark)",
-                border: "1px solid",
-                borderColor: "var(--teal)",
-                opacity: 0.85,
-              }}
-            >
-              {s}
-            </span>
-          ))}
-        </div>
-      </ReportSection>
-
-      {/* Section 6: Language tips */}
-      <ReportSection title="How to talk about your NHS experience outside the NHS">
         <div className="space-y-6">
-          {report.languageTips.map((tip, i) => (
+          {languageBanks.map((bank, i) => (
             <div
               key={i}
               className="p-5 rounded-lg"
-              style={{ background: "#f0f9f6", border: "1px solid var(--teal-light)" }}
+              style={{ background: "var(--teal-light)", border: "1px solid var(--teal)" }}
             >
-              <p className="text-sm leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                {tip}
+              <p className="text-sm font-medium mb-4" style={{ color: "var(--teal-dark)" }}>
+                {bank.skillName}
               </p>
+              <div className="space-y-3">
+                {bank.phrasings.map((p, j) => (
+                  <div key={j}>
+                    <p
+                      className="text-xs font-medium uppercase tracking-wide mb-1"
+                      style={{ color: "var(--teal-dark)", opacity: 0.7 }}
+                    >
+                      {p.context}
+                    </p>
+                    <p className="text-sm leading-relaxed" style={{ color: "var(--teal-dark)" }}>
+                      {p.text}
+                    </p>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
       </ReportSection>
 
-      {/* Section 7: Coaching questions */}
+      {/* Section 4 — Coaching questions */}
       <ReportSection
         title="Coaching questions to reflect on next"
         note="You may want to write your answers down, or bring these into a coaching conversation."
       >
         <ol className="space-y-4">
-          {report.coachingQuestions.map((q, i) => (
+          {coachingQuestions.map((q, i) => (
             <li key={i} className="flex gap-4 items-start">
-              <span
-                className="flex-shrink-0 font-serif text-lg"
-                style={{ color: "var(--teal)", opacity: 0.5, lineHeight: 1.2 }}
-              >
+              <span className="flex-shrink-0 font-serif text-lg" style={{ color: "var(--teal)", opacity: 0.5, lineHeight: 1.2 }}>
                 {i + 1}.
               </span>
-              <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>
-                {q}
-              </p>
+              <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>{q}</p>
             </li>
           ))}
         </ol>
       </ReportSection>
 
-      {/* Actions */}
+      {/* Section 5 — Next steps */}
+      <ReportSection
+        title="What to do with this report"
+        note="Three small actions to make this useful, not just interesting."
+      >
+        <ol className="space-y-3">
+          {nextSteps.map((step, i) => (
+            <li key={i} className="flex gap-4 items-start">
+              <span
+                className="flex-shrink-0 inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium"
+                style={{ background: "var(--teal)", color: "white" }}
+              >
+                {i + 1}
+              </span>
+              <p className="text-base leading-relaxed" style={{ color: "var(--text-muted)" }}>{step}</p>
+            </li>
+          ))}
+        </ol>
+      </ReportSection>
+
+      {/* Coaching CTA */}
       <div
         className="card p-6 sm:p-8 mb-10"
         style={{ background: "var(--teal-light)", border: "1.5px solid var(--teal)" }}
       >
-        <h3
-          className="font-serif text-lg font-normal mb-2"
-          style={{ color: "var(--teal-dark)" }}
-        >
-          Take this further
-        </h3>
-        <p className="text-sm mb-5" style={{ color: "var(--teal-dark)", opacity: 0.8 }}>
-          A coaching conversation can help you work through what this report is pointing to.
-        </p>
-        <a
-          href="#"
-          className="btn-primary inline-flex"
-          style={{ background: "var(--teal-dark)" }}
-        >
-          Book a coaching conversation
-        </a>
+        <div className="flex items-start gap-3">
+          <div style={{ width: "3px", minHeight: "48px", background: "var(--teal)", borderRadius: "2px", flexShrink: 0 }} />
+          <div>
+            <h3 className="font-serif text-lg font-normal mb-2" style={{ color: "var(--teal-dark)" }}>
+              Take this further
+            </h3>
+            <p className="text-sm mb-5" style={{ color: "var(--teal-dark)", opacity: 0.8 }}>
+              A coaching conversation can help you work through what this report is pointing to.
+            </p>
+            <a href="#" className="btn-primary inline-flex" style={{ background: "var(--teal-dark)" }}>
+              Book a coaching conversation
+            </a>
+          </div>
+        </div>
       </div>
 
       {/* Export */}
@@ -301,9 +342,7 @@ export default function ReportPage() {
           Did this help you see your experience differently?
         </p>
         {feedback ? (
-          <p className="text-sm" style={{ color: "var(--teal)" }}>
-            Thank you for the feedback.
-          </p>
+          <p className="text-sm" style={{ color: "var(--teal)" }}>Thank you for the feedback.</p>
         ) : (
           <div className="flex gap-3 flex-wrap">
             {["Yes", "Somewhat", "Not yet"].map((label) => (
